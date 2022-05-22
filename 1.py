@@ -362,7 +362,7 @@ def make_existing_function_throwable():
 class Exception:
 
 	def __init__(self, e):
-
+        
 		self.l_e = [i for i in e.split('\n')]
 		self.line_number = int(self.l_e[0].strip()[:self.l_e[0].find(":")]) - 1
 		self.exception_desc = self.l_e[0].strip()[self.l_e[0].find("error: ")+7:]
@@ -445,6 +445,8 @@ class Exception:
 		# variable/method xyz is already defined in
 		# Action: commment out this code_statement
 		if((self.exception_desc.startswith("variable") or self.exception_desc.startswith("method")) and "is already defined in " in self.exception_desc):
+			#print(self.exception_desc)
+			#print("var:", l_code[self.line_number])
 			l_code[self.line_number] = "//" + l_code[self.line_number]
 
 			self.add_to_dont_touch_list()
@@ -675,6 +677,7 @@ class Exception:
 		# ABC is already defined in this compilation unit
 		# Action: Comment out this line
 		if(" is already defined in this compilation unit" in self.exception_desc):
+			#print("already:", l_code[self.line_number])
 			l_code[self.line_number] = "// " + l_code[self.line_number]
 			self.add_to_dont_touch_list()
 			return
@@ -765,7 +768,7 @@ class Exception:
 					else:
 						spaces = " " * (len(l_code[self.line_number]) - len(l_code[self.line_number].lstrip()))
 						is_static = " static " * int(" static " in l_code[self.line_number])
-						new_line =  spaces + is_static + class_name + " " + var_name + " = new " + class_name + "();"
+						new_line = spaces + is_static + class_name + " " + var_name + " = new " + class_name + "();"
 						l_code[self.line_number] = new_line + "\n" + l_code[self.line_number]
 						reverse_method_to_class_mapping[var_name] = class_name
 					self.add_to_dont_touch_list()
@@ -890,6 +893,14 @@ def reset_d_classes():
 	reverse_method_to_class_mapping = defaultdict()
 	exception_list_index = 0
 
+def add_tag(file_content):
+	lines = file_content.split("\n")
+	tagged_content = ""
+	for idx in range(len(lines)):
+		line = lines[idx]
+		tagged_content += str(idx) + line + "\n"
+	return tagged_content
+
 def handle_file(src_file_path, output_file_path, times_to_try_compile):
 	global l_code
 	global dont_touch_list
@@ -904,10 +915,12 @@ def handle_file(src_file_path, output_file_path, times_to_try_compile):
 	make_existing_function_throwable()
 
 	i = 0
-	print("ok")
+	fw = open("info.txt", 'w')
 	while(i < times_to_try_compile):
+		#l_code = get_file_content(file_path).split("\n")  #add
+		fw.write(add_tag(get_file_content(file_path))+"\n")
 		s = compile_file_and_get_output(file_path)
-
+		fw.write(s+"\n")
 		l_errors = [l.strip() for l in s.split(file_path+":")][1:]
 		l_errors = [i for i in l_errors if (" error: " in i and " warning: " not in i)]
 
@@ -923,11 +936,11 @@ def handle_file(src_file_path, output_file_path, times_to_try_compile):
 		add_members_of_existing_existing_class()
 		generated_code = get_new_code_to_add()
 		new_code = "\n".join(l_code + [SEPARATOR_STRING] + generated_code)
-                print("ok1")
+
 		write_file_content(file_path, new_code)
 
-		# l_code = get_file_content(file_path).split("\n")
-		# l_code = l_code[:l_code.index(SEPARATOR_STRING)]
+		l_code = get_file_content(file_path).split("\n")
+		l_code = l_code[:l_code.index(SEPARATOR_STRING)]
 
 		i += 1
 	remove_file_if_exists(output_file_path)
@@ -940,7 +953,7 @@ if __name__ == '__main__':
 	d_classes_to_add = defaultdict()
 	reverse_method_to_class_mapping = defaultdict()
 	exception_list_index = 0
-	print("func")
+
 	if(len(sys.argv) != 4):
 		print("Usage:", sys.argv[0], "input_file", "output_file", "compile_tries")
 		exit()
